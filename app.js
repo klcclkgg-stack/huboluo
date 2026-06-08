@@ -74,6 +74,7 @@ function init() {
   initReading();
   initRecords();
   initProfile();
+  initDonation();
   checkHealth();
 }
 
@@ -215,6 +216,19 @@ async function doConsult(choice) {
       return;
     }
 
+    // 每日次数限制
+    if (d.status === 'limit_reached') {
+      const bonus = d.bonus || 0;
+      if (bonus > 0) {
+        setStatus(`今日免费卦已用完，但你有 ${bonus} 卦 bonus 额度可用，点打赏按钮领取`);
+      } else {
+        setStatus(`今日免费 3 卦已用完，明天再来或打赏支持胡卜萝`);
+      }
+      btn.disabled=false; document.getElementById('consultText').hidden=false; document.getElementById('consultLoading').hidden=true;
+      document.getElementById('donationHint').style.display = 'block';
+      return;
+    }
+
     if (!d.cast || !d.report) { setStatus('生成失败，请重试'); btn.disabled=false; document.getElementById('consultText').hidden=false; document.getElementById('consultLoading').hidden=true; return; }
 
     hideClarify();
@@ -222,6 +236,10 @@ async function doConsult(choice) {
     saveConsult(d);
     renderReading(d);
     switchTab('reading');
+    // 显示剩余次数
+    if (d.daily_remaining !== undefined) {
+      document.getElementById('dailyCount').textContent = `今日余 ${d.daily_remaining} 卦`;
+    }
     setStatus('');
   } catch(e) { setStatus('连接失败：'+e.message); }
 
@@ -439,11 +457,57 @@ function initProfile() {
       }
     });
   }
+  // 支持按钮
+  const supportBtn = document.getElementById('supportBtn');
+  if (supportBtn) {
+    supportBtn.addEventListener('click', () => {
+      document.getElementById('donationHint').hidden = false;
+      document.getElementById('donationHint').scrollIntoView({ behavior: 'smooth' });
+      switchTab('home');
+    });
+  }
   // 数据清除
   document.getElementById('clearDataBtn').addEventListener('click',()=>{
     if(confirm('清除所有本地数据？不可恢复。')){localStorage.removeItem(CONSULTS_KEY);localStorage.removeItem(NOTES_KEY);renderHistory();renderNotes();}
   });
   updateProfileUI();
+}
+
+/* ===== 打赏 ===== */
+function initDonation() {
+  document.querySelectorAll('.donation-amt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const amt = btn.dataset.amt;
+      if (amt === '0') {
+        setStatus('感谢支持！扫码输入任意金额即可');
+      } else {
+        setStatus(`感谢！扫码支付 ¥${amt} 支持胡卜萝`);
+      }
+    });
+  });
+  // 已打赏领取
+  document.getElementById('redeemBtn').addEventListener('click', async () => {
+    const uid = getUserId();
+    const statusEl = document.getElementById('redeemStatus');
+    statusEl.textContent = '领取中…';
+    try {
+      const r = await fetch(API_BASE + '/api/redeem', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({user_id: uid}),
+      });
+      const d = await r.json();
+      if (d.ok) {
+        statusEl.textContent = `🎉 已领取 ${10} 卦永久额度！当前共 ${d.bonus} 卦`;
+        document.getElementById('donationHint').hidden = true;
+        setStatus(`感谢支持！你有 ${d.bonus} 卦 bonus 额度`);
+      } else {
+        statusEl.textContent = '领取失败，稍后再试';
+      }
+    } catch (e) {
+      statusEl.textContent = '网络错误';
+    }
+  });
 }
 
 function updateProfileUI() {

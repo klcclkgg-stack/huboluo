@@ -103,26 +103,6 @@
         <span id="consultText">起卦直断</span>
         <span id="consultLoading" hidden>⋯ 起卦中</span>
       </button>
-      <div class="daily-count" id="dailyCount">今日余 3 卦</div>
-      <div class="donation-hint" id="donationHint" hidden>
-        <div class="donation-box">
-          <div class="donation-emoji">☕</div>
-          <p class="donation-title">请胡卜萝喝杯奶茶</p>
-          <p class="donation-desc">断得准了，随意打赏，支持胡卜萝持续优化</p>
-          <div class="donation-amounts">
-            <button class="donation-amt" data-amt="6.6">¥6.6</button>
-            <button class="donation-amt" data-amt="8.8">¥8.8</button>
-            <button class="donation-amt" data-amt="16.8">¥16.8</button>
-            <button class="donation-amt" data-amt="0">🙏 随缘</button>
-          </div>
-          <p class="donation-wx-hint">扫码 → 输入金额 → 赞赏</p>
-          <div class="donation-qr-placeholder" id="donationQR">
-            <img src="/wechat_pay.jpg" style="width:130px;height:130px;border-radius:12px;display:block">
-          </div>
-          <button class="btn-sm" id="redeemBtn" style="margin-top:16px;width:100%">我已打赏，领取 10 卦 🎉</button>
-          <p class="redeem-status" id="redeemStatus"></p>
-        </div>
-      </div>
       <div class="status" id="homeStatus"></div>
     </main>
 
