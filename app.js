@@ -53,13 +53,23 @@ const SAMPLES = {
 };
 
 const LINE_OPTS = [
-  {v:7,l:'少阳',c:'yang'}, {v:8,l:'少阴',c:'yin'},
-  {v:9,l:'老阳',c:'yang'}, {v:6,l:'老阴',c:'yin'},
+  {v:7,l:'少阳',m:'',c:'yang'},
+  {v:8,l:'少阴',m:'',c:'yin'},
+  {v:9,l:'老阳',m:'O',c:'yang'},
+  {v:6,l:'老阴',m:'X',c:'yin'},
 ];
-const LINE_NAMES = ['初爻','二爻','三爻','四爻','五爻','上爻'];
+const MANUAL_DISPLAY = [
+  {pos:6,l:'上爻'},
+  {pos:5,l:'五爻'},
+  {pos:4,l:'四爻'},
+  {pos:3,l:'三爻'},
+  {pos:2,l:'二爻'},
+  {pos:1,l:'初爻'},
+];
 
 let curCast=null, curReport=null, curMethod='auto';
 let manualVals=[7,7,7,7,7,7];
+let openManualPos=0;
 let subTab='history', curCat='wealth';
 let fbVal='', consultTime=0;
 
@@ -156,23 +166,46 @@ function initManual() {
     document.querySelectorAll('.method-btn').forEach(x => x.classList.remove('active'));
     b.classList.add('active');
     curMethod = b.dataset.method;
+    openManualPos = 0;
     document.getElementById('manualPanel').hidden = curMethod!=='manual';
+    renderManual();
   }));
   renderManual();
 }
 
 function renderManual() {
   const el = document.getElementById('manualLines');
-  el.innerHTML = manualVals.map((v,i) => {
+  el.innerHTML = MANUAL_DISPLAY.map(row => {
+    const v = manualVals[row.pos - 1] || 7;
+    const cur = LINE_OPTS.find(o => o.v === v) || LINE_OPTS[0];
     const opts = LINE_OPTS.map(o =>
-      `<button class="manual-opt ${o.v===v?'active':''}" data-li="${i}" data-v="${o.v}">
-        <span class="yao-icon ${o.c}"><span></span><span></span></span>${o.l}
+      `<button class="manual-dropdown-item ${o.v===v?'selected':''}" data-pos="${row.pos}" data-v="${o.v}">
+        <span class="yao-icon ${o.c}"><span></span><span></span></span>
+        <span class="manual-option-name">${o.l}</span>
+        <span class="manual-option-mark">${o.m}</span>
       </button>`
     ).join('');
-    return `<div class="manual-row"><span class="manual-label">${LINE_NAMES[i]}</span><div class="manual-options">${opts}</div></div>`;
+    return `<div class="manual-row">
+      <span class="manual-label">${row.l}</span>
+      <div class="manual-select-wrap">
+        <button class="manual-select ${openManualPos===row.pos?'open':''}" data-pos="${row.pos}">
+          <span class="yao-icon ${cur.c}"><span></span><span></span></span>
+          <span class="manual-option-name">${cur.l}</span>
+          <span class="manual-option-mark">${cur.m}</span>
+          <span class="manual-arrow">⌄</span>
+        </button>
+        ${openManualPos===row.pos ? `<div class="manual-dropdown">${opts}</div>` : ''}
+      </div>
+    </div>`;
   }).join('');
-  el.querySelectorAll('.manual-opt').forEach(b => b.addEventListener('click', () => {
-    manualVals[+b.dataset.li] = +b.dataset.v;
+  el.querySelectorAll('.manual-select').forEach(b => b.addEventListener('click', () => {
+    const pos = +b.dataset.pos;
+    openManualPos = openManualPos === pos ? 0 : pos;
+    renderManual();
+  }));
+  el.querySelectorAll('.manual-dropdown-item').forEach(b => b.addEventListener('click', () => {
+    manualVals[+b.dataset.pos - 1] = +b.dataset.v;
+    openManualPos = 0;
     renderManual();
   }));
 }
@@ -197,7 +230,8 @@ async function doConsult(choice) {
   document.getElementById('consultLoading').hidden = false;
   setStatus('⋯ 正在起卦直断');
 
-  consultTime = Date.now();
+  // 澄清问题属于同一次起卦，必须沿用首次提交时间。
+  if (!choice || !consultTime) consultTime = Date.now();
 
   const p = { question:q, clientNow:consultTime, method:curMethod, recentHistory:recentConsults() };
   if (choice) p.clarificationChoice = choice;
@@ -207,12 +241,10 @@ async function doConsult(choice) {
   p.user_context = getUserContext();
 
   try {
-    const r = await fetch(API_BASE + '/api/consult', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(p) });
-    const d = await r.json();
+    const d = await apiRequest('/api/consult', p);
 
     if (d.status==='clarification_required' && d.clarification) {
       showClarify(d.clarification);
-      btn.disabled=false; document.getElementById('consultText').hidden=false; document.getElementById('consultLoading').hidden=true;
       return;
     }
 
@@ -224,12 +256,11 @@ async function doConsult(choice) {
       } else {
         setStatus(`今日免费 3 卦已用完，明天再来或打赏支持胡卜萝`);
       }
-      btn.disabled=false; document.getElementById('consultText').hidden=false; document.getElementById('consultLoading').hidden=true;
-      document.getElementById('donationHint').style.display = 'block';
+      document.getElementById('donationHint').hidden = false;
       return;
     }
 
-    if (!d.cast || !d.report) { setStatus('生成失败，请重试'); btn.disabled=false; document.getElementById('consultText').hidden=false; document.getElementById('consultLoading').hidden=true; return; }
+    if (!d.cast || !d.report) { setStatus('生成失败，请重试'); return; }
 
     hideClarify();
     curCast = d.cast; curReport = d.report; fbVal='';
@@ -241,9 +272,13 @@ async function doConsult(choice) {
       document.getElementById('dailyCount').textContent = `今日余 ${d.daily_remaining} 卦`;
     }
     setStatus('');
-  } catch(e) { setStatus('连接失败：'+e.message); }
-
-  btn.disabled=false; document.getElementById('consultText').hidden=false; document.getElementById('consultLoading').hidden=true;
+  } catch(e) {
+    setStatus('连接失败：'+e.message);
+  } finally {
+    btn.disabled=false;
+    document.getElementById('consultText').hidden=false;
+    document.getElementById('consultLoading').hidden=true;
+  }
 }
 
 function showClarify(c) {
@@ -298,15 +333,15 @@ function renderReading(d) {
     const h = (l.hiddenGods||[]).map(g => `${g.relative||''}${g.branch||''}${g.element||''}`).join(' ');
     return `<div class="hex-row">
       <div class="hl-left">
-        <span class="spirit">${sS(l.spirit||'')}</span>
-        <span class="rel-text">${sR(l.relative||'')}${l.branch||''}${l.element||''}</span>
+        <span class="spirit">${esc(sS(l.spirit||''))}</span>
+        <span class="rel-text">${esc(sR(l.relative||''))}${esc(l.branch||'')}${esc(l.element||'')}</span>
         ${l.role?`<span class="role-tag">${esc(l.role)}</span>`:''}
         ${h?`<span class="hidden-badge">伏${esc(h)}</span>`:''}
       </div>
       <div class="yao-wrap"><div class="yao-line ${l.line==='yang'?'yang':'yin'}"><span></span><span></span></div></div>
       <div class="change-cell">${l.moving?`<span class="change-badge">${l.changedLine==='yang'?'X→':'O→'}</span>`:''}</div>
       <div class="yao-wrap"><div class="yao-line ${l.changedLine==='yang'?'yang':'yin'}"><span></span><span></span></div></div>
-      <div class="hl-right"><span class="rel-text">${sR(l.changedRelative||'')}${l.changedBranch||''}${l.changedElement||''}</span><span class="strength-tag">${l.changedStrength?(l.changedStrength.level||'')+(l.changedStrength.void?' 空':''):''}</span></div>
+      <div class="hl-right"><span class="rel-text">${esc(sR(l.changedRelative||''))}${esc(l.changedBranch||'')}${esc(l.changedElement||'')}</span><span class="strength-tag">${esc(l.changedStrength?(l.changedStrength.level||'')+(l.changedStrength.void?' 空':''):'')}</span></div>
     </div>`;
   }).join('');
 
@@ -331,7 +366,10 @@ async function shareReading() {
 }
 
 function buildText() {
-  const lines=(curCast.lines||[]).slice().reverse().map(l=>(l.moving?' 动化'+sR(l.changedRelative||'')+l.changedBranch+''+l.changedElement:''));
+  const lines=(curCast.lines||[]).slice().reverse().map(l =>
+    `${sS(l.spirit||'')} ${sR(l.relative||'')}${l.branch||''}${l.element||''}` +
+    (l.moving?` 动化${sR(l.changedRelative||'')}${l.changedBranch||''}${l.changedElement||''}`:'')
+  );
   return [`事项：${curCast.question}`,
     `时间：${curCast.context.datetime}`,
     `干支：${curCast.context.year}年 ${curCast.context.month}月 ${curCast.context.day}日 ${curCast.context.hour}时`,
@@ -354,17 +392,17 @@ function initFeedback() {
 async function submitFb() {
   if(!fbVal||!curCast||!curReport)return;
   try{
-    const r=await fetch(API_BASE + '/api/feedback',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({readingId:curReport.readingId||'',value:fbVal,question:curCast.question||'',directReading:curReport.directReading||'',summary:curReport.summary||'',note:document.getElementById('feedbackNote').value.trim(),cast:curCast})});
-    const d=await r.json();
+    const d=await apiRequest('/api/feedback',{readingId:curReport.readingId||'',value:fbVal,question:curCast.question||'',directReading:curReport.directReading||'',summary:curReport.summary||'',note:document.getElementById('feedbackNote').value.trim(),cast:curCast});
     document.getElementById('feedbackMsg').textContent=d.ok?'✓ 感谢反馈':'保存失败';
-  }catch{e=>document.getElementById('feedbackMsg').textContent='保存失败'};
+  }catch(e){
+    document.getElementById('feedbackMsg').textContent='保存失败：'+e.message;
+  }
 }
 
 /* ===== History ===== */
 function saveConsult(d) {
   const r=getConsults(), id=String(consultTime||Date.now());
-  const item={id,question:d.cast.question,time:d.cast.context?d.cast.context.datetime:'',hex:`${d.cast.original.name}→${d.cast.changed.name}`,summary:d.report.summary||'',cast:d.cast,report:d.report,createdAt:consultTime||Date.now()};
+  const item={id,question:d.cast.question,time:d.cast.context?d.cast.context.datetime:'',hex:`${d.cast.original.name}→${d.cast.changed.name}`,summary:d.report.summary||'',cast:d.cast,report:d.report,method:curMethod,createdAt:consultTime||Date.now()};
   localStorage.setItem(CONSULTS_KEY,JSON.stringify([item,...r.filter(x=>x.id!==id)].slice(0,30)));
 }
 
@@ -394,7 +432,7 @@ function renderHistory() {
     }
     const r=getConsults().find(x=>x.id===id);
     if(!r)return;
-    curCast=r.cast;curReport=r.report;renderReading({cast:r.cast,report:r.report});switchTab('reading');
+    curCast=r.cast;curReport=r.report;curMethod=r.method||'auto';renderReading({cast:r.cast,report:r.report});switchTab('reading');
   }));
 
 }
@@ -485,28 +523,10 @@ function initDonation() {
       }
     });
   });
-  // 已打赏领取
+  // 尚未接入支付回调，不能让浏览器自行发放额度。
   document.getElementById('redeemBtn').addEventListener('click', async () => {
-    const uid = getUserId();
     const statusEl = document.getElementById('redeemStatus');
-    statusEl.textContent = '领取中…';
-    try {
-      const r = await fetch(API_BASE + '/api/redeem', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({user_id: uid}),
-      });
-      const d = await r.json();
-      if (d.ok) {
-        statusEl.textContent = `🎉 已领取 ${10} 卦永久额度！当前共 ${d.bonus} 卦`;
-        document.getElementById('donationHint').hidden = true;
-        setStatus(`感谢支持！你有 ${d.bonus} 卦 bonus 额度`);
-      } else {
-        statusEl.textContent = '领取失败，稍后再试';
-      }
-    } catch (e) {
-      statusEl.textContent = '网络错误';
-    }
+    statusEl.textContent = '支付自动核验尚未接入，请联系胡卜萝领取额度';
   });
 }
 
@@ -529,8 +549,31 @@ function updateProfileUI() {
 
 /* ===== Health ===== */
 async function checkHealth() {
-  try{const r=await fetch(API_BASE + '/api/health');const d=await r.json();if(d.ok)document.getElementById('cloudStatus').textContent=`已连接 · ${d.chunks}条知识库`}catch(e){}
+  const status=document.getElementById('cloudStatus');
+  try{
+    const d=await apiRequest('/api/health');
+    status.textContent=d.ok?`已连接 · ${d.chunks}条知识库`:'服务异常';
+    status.classList.toggle('green',Boolean(d.ok));
+  }catch(e){
+    status.textContent='暂时不可用';
+    status.classList.remove('green');
+  }
 }
 
 /* ===== Utility ===== */
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+async function apiRequest(path, payload) {
+  const options = payload === undefined
+    ? {}
+    : {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)};
+  const response = await fetch(API_BASE + path, options);
+  let data;
+  try {
+    data = await response.json();
+  } catch (e) {
+    throw new Error(`服务返回异常（HTTP ${response.status}）`);
+  }
+  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  return data;
+}
+
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}

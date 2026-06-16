@@ -96,6 +96,7 @@
 
       <!-- 手动排盘 -->
       <div class="manual-panel" id="manualPanel" hidden>
+        <div class="manual-tip">按盘面从上到下选择，提交时仍按初爻到上爻排盘。</div>
         <div class="manual-lines" id="manualLines"></div>
       </div>
 
@@ -119,7 +120,7 @@
           <div class="donation-qr-wrap" id="donationQR">
             <img src="/wechat_pay.jpg" class="donation-qr-img">
           </div>
-          <button class="btn-sm" id="redeemBtn" style="margin-top:16px;width:100%">我已打赏，领取 10 卦 🎉</button>
+          <button class="btn-sm" id="redeemBtn" style="margin-top:16px;width:100%">打赏后领取额外次数</button>
           <p class="redeem-status" id="redeemStatus"></p>
         </div>
       </div>
@@ -223,7 +224,7 @@
       <div class="card">
         <div class="card-cell">
           <span>☁ 云服务</span>
-          <span class="tag green" id="cloudStatus">已连接</span>
+          <span class="tag" id="cloudStatus">检测中</span>
         </div>
         <div class="card-cell">
           <span>⚙ 版本</span>
