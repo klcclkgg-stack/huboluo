@@ -1,8 +1,0 @@
-{
-  "name": "hubuluo",
-  "version": "1.0.0",
-  "description": "胡卜萝 — 六爻 AI 直断",
-  "scripts": {
-    "dev": "vercel dev"
-  }
-}
