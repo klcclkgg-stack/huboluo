@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>胡卜萝 — 六爻 AI 直断</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☯</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app">
+    <!-- ===== 昵称弹窗 ===== -->
+    <div class="modal-overlay" id="nicknameModal">
+      <div class="modal-box">
+        <div class="modal-seal">胡</div>
+        <div class="modal-title">初次见面，我是胡卜萝</div>
+        <p class="modal-desc">告诉我你的名字，我会记住你，每次断卦也能叫上你。</p>
+        <input class="modal-input" id="nicknameInput" type="text" placeholder="输入你的昵称" maxlength="12" autocomplete="off">
+        <button class="btn-primary modal-btn" id="nicknameConfirm">好的，胡卜萝记住我了</button>
+        <p class="modal-skip" id="nicknameSkip">暂不设置</p>
+      </div>
+    </div>
+
+    <!-- ===== 底部导航 ===== -->
+    <nav class="nav" id="nav">
+      <button class="nav-item active" data-tab="home">
+        <svg class="nav-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        <span>起卦</span>
+      </button>
+      <button class="nav-item" data-tab="reading">
+        <svg class="nav-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <span>卦象</span>
+      </button>
+      <button class="nav-item" data-tab="records">
+        <svg class="nav-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        <span>记录</span>
+      </button>
+      <button class="nav-item" data-tab="profile">
+        <svg class="nav-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        <span>我的</span>
+      </button>
+    </nav>
+
+    <!-- ===== 起卦 ===== -->
+    <main class="tab-content active" id="tab-home">
+      <div class="brand">
+        <div class="brand-seal">胡</div>
+        <h1 class="brand-title">胡卜萝</h1>
+        <p class="brand-subtitle">心诚则灵 · 一次只问一事</p>
+      </div>
+
+      <div class="input-card">
+        <textarea id="questionInput" maxlength="200" placeholder="写下你想问的事情…" rows="3"></textarea>
+        <div class="input-meta">
+          <span class="input-count"><span id="charCount">0</span>/200</span>
+        </div>
+      </div>
+
+      <!-- 澄清 -->
+      <div class="card" id="clarificationCard" hidden>
+        <div class="card-body" style="gap:16px">
+          <p style="font-size:15px;line-height:1.7;color:#4a3728" id="clarificationQuestion"></p>
+          <div class="flex-row" id="clarificationOptions"></div>
+        </div>
+      </div>
+
+      <!-- 推荐问题 -->
+      <section class="section">
+        <h2 class="section-title">推荐问题</h2>
+        <div class="cat-pills" id="catPills">
+          <button class="pill active" data-cat="wealth">💰 财运</button>
+          <button class="pill" data-cat="love">💕 感情</button>
+          <button class="pill" data-cat="career">💼 事业</button>
+          <button class="pill" data-cat="life">🏠 生活</button>
+        </div>
+        <div class="samples" id="samples"></div>
+      </section>
+
+      <!-- 起卦方式 -->
+      <section class="section">
+        <h2 class="section-title">起卦方式</h2>
+        <div class="method-grid">
+          <button class="method-btn active" data-method="auto">
+            <span class="method-icon">⟳</span>
+            <span class="method-label">自动起卦</span>
+            <span class="method-desc">根据问题生成卦象</span>
+          </button>
+          <button class="method-btn" data-method="manual">
+            <span class="method-icon">✎</span>
+            <span class="method-label">手动排盘</span>
+            <span class="method-desc">逐爻指定阴阳</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- 手动排盘 -->
+      <div class="manual-panel" id="manualPanel" hidden>
+        <div class="manual-tip">按盘面从上到下选择，提交时仍按初爻到上爻排盘。</div>
+        <div class="manual-lines" id="manualLines"></div>
+      </div>
+
+      <button class="btn-primary" id="consultBtn">
+        <span id="consultText">起卦直断</span>
+        <span id="consultLoading" hidden>⋯ 起卦中</span>
+      </button>
+      <div class="daily-count" id="dailyCount">今日余 3 卦</div>
+      <div class="donation-hint" id="donationHint" hidden>
+        <div class="donation-box">
+          <div class="donation-emoji">☕</div>
+          <p class="donation-title">请胡卜萝喝杯奶茶</p>
+          <p class="donation-desc">断得准了，随意打赏，支持胡卜萝持续优化</p>
+          <div class="donation-amounts">
+            <button class="donation-amt" data-amt="6.6">¥6.6</button>
+            <button class="donation-amt" data-amt="8.8">¥8.8</button>
+            <button class="donation-amt" data-amt="16.8">¥16.8</button>
+            <button class="donation-amt" data-amt="0">🙏 随缘</button>
+          </div>
+          <p class="donation-wx-hint">扫码 → 输入金额 → 赞赏</p>
+          <div class="donation-qr-wrap" id="donationQR">
+            <img src="/wechat_pay.jpg" class="donation-qr-img">
+          </div>
+          <button class="btn-sm" id="redeemBtn" style="margin-top:16px;width:100%">打赏后领取额外次数</button>
+          <p class="redeem-status" id="redeemStatus"></p>
+        </div>
+      </div>
+      <div class="status" id="homeStatus"></div>
+    </main>
+
+    <!-- ===== 卦象 ===== -->
+    <main class="tab-content" id="tab-reading">
+      <div class="empty-state" id="readingEmpty">
+        <div class="empty-icon">☯</div>
+        <p class="empty-title">暂无卦象</p>
+        <p class="empty-desc">首页起卦后，卦象会展示在这里</p>
+      </div>
+
+      <div id="readingContent" hidden>
+        <!-- 卦盘 -->
+        <div class="card">
+          <div class="info-grid" id="infoGrid"></div>
+          <div class="hex-header" id="hexHeader"></div>
+          <div class="hex-board" id="hexBoard"></div>
+          <div class="hex-footer"><span>本卦</span><span>变卦</span></div>
+        </div>
+
+        <!-- 断语 -->
+        <div class="card" style="margin-top:16px">
+          <div class="reading-head">
+            <span class="reading-badge">胡卜萝直断</span>
+          </div>
+          <div class="reading-body" id="readingBody"></div>
+          <div class="reading-actions">
+            <button class="btn-outline" id="copyBtn">📋 复制</button>
+            <button class="btn-outline" id="shareBtn">↗ 分享</button>
+          </div>
+          <div class="feedback" id="feedbackSection">
+            <p class="feedback-title">这次断得准吗？</p>
+            <div class="feedback-row" id="feedbackRow">
+              <button class="fb-opt" data-val="accurate">✓ 准</button>
+              <button class="fb-opt" data-val="inaccurate">✗ 不准</button>
+              <button class="fb-opt" data-val="pending">○ 待验证</button>
+            </div>
+            <div class="feedback-extend" id="feedbackExtend" hidden>
+              <textarea id="feedbackNote" placeholder="补充实际结果或应验日期…" rows="2"></textarea>
+              <button class="btn-sm" id="feedbackSubmit">保存反馈</button>
+            </div>
+            <p class="feedback-msg" id="feedbackMsg"></p>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ===== 记录 ===== -->
+    <main class="tab-content" id="tab-records">
+      <div class="sub-nav">
+        <button class="sub-nav-item active" data-sub="history">历史</button>
+        <button class="sub-nav-item" data-sub="notes">笔记</button>
+      </div>
+
+      <div class="sub-page" id="sub-history">
+        <p class="sub-hint">保存最近 30 条断卦记录</p>
+        <div class="empty-state" id="histEmpty">
+          <p class="empty-title">暂无历史</p>
+          <p class="empty-desc">起卦后会自动保存到这里</p>
+        </div>
+        <div id="historyList"></div>
+      </div>
+
+      <div class="sub-page" id="sub-notes" hidden>
+        <p class="sub-hint">记录应验结果和自己的复盘</p>
+        <div class="note-card">
+          <textarea id="noteInput" placeholder="写下这卦后续发生了什么…" rows="3"></textarea>
+          <button class="btn-sm" id="saveNoteBtn">保存笔记</button>
+        </div>
+        <div class="empty-state" id="notesEmpty">
+          <p class="empty-title">暂无笔记</p>
+          <p class="empty-desc">保存笔记后方便追踪验证</p>
+        </div>
+        <div id="notesList"></div>
+      </div>
+    </main>
+
+    <!-- ===== 我的 ===== -->
+    <main class="tab-content" id="tab-profile">
+      <div class="profile-head">
+        <div class="profile-seal">胡</div>
+        <h2 class="profile-name">胡卜萝</h2>
+        <p class="profile-role">六爻 AI 预测师</p>
+      </div>
+
+      <!-- 个人信息 -->
+      <div class="card">
+        <div class="card-cell" id="editNicknameBtn" style="cursor:pointer">
+          <span>👤 我的昵称</span>
+          <span class="tag" id="nicknameDisplay" style="color:var(--ink-muted)">设置昵称</span>
+        </div>
+        <div class="card-cell">
+          <span>📊 统计</span>
+          <span class="tag" id="userStats">加载中</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-cell">
+          <span>☁ 云服务</span>
+          <span class="tag" id="cloudStatus">检测中</span>
+        </div>
+        <div class="card-cell">
+          <span>⚙ 版本</span>
+          <span class="tag" id="versionLabel">v1.0.0</span>
+        </div>
+        <div class="card-cell">
+          <span>◎ 引擎</span>
+          <span class="tag">排盘 + DeepSeek</span>
+        </div>
+      </div>
+
+      <div class="card" style="cursor:pointer" id="clearDataBtn">
+        <div class="card-cell" style="color:#b91c1c">
+          <span>🗑 清除本地数据</span>
+          <span style="color:#bbb">›</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">关于</h3>
+        <div class="about-text">
+          <p>胡卜萝是一个基于网页的 AI 六爻占卜工具。代码负责硬排盘，AI 负责综合断卦。</p>
+          <p>断卦流程：硬排盘 → 知识库检索（7836条古籍案例）→ 规则引擎分析 → DeepSeek AI 综合直断。</p>
+          <p>训练依据以《增删卜易》《卜筮正宗》《易隐》《易冒》《火珠林》为核心，辅以现代名家案例验证。</p>
+        </div>
+      </div>
+
+      <p class="footer-legal">胡卜萝 v1.0.0 · 占卜结果仅供参考</p>
+    </main>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
